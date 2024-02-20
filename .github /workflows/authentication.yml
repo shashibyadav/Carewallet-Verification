@@ -1,0 +1,106 @@
+# This is a basic workflow to help you get started with Actions
+name: Connect to an AWS role from a GitHub repository
+
+# Controls when the action will run. Invokes the workflow on push events but only for the main branch
+on:
+  push:
+    branches: [main]
+  
+
+
+env:
+  
+  AWS_REGION : "us-east-1" #Change to reflect your Region
+
+# Permission can be added at job level or workflow level    
+permissions:
+      id-token: write   # This is required for requesting the JWT
+      contents: read    # This is required for actions/checkout
+
+jobs:
+  deploy:
+    name: Upload to Amazon S3
+    runs-on: ubuntu-latest
+    # These permissions are needed to interact with GitHub's OIDC Token endpoint.
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 20
+    - name: Configure AWS credentials from Test account
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: arn:aws:iam::523494594546:role/github-actions
+        aws-region: us-east-1
+
+    - name: npm install - Doctor Backend code
+      working-directory: ./carewallet-module-doctor
+      run: npm install
+
+    - name: npm install - Patient Backend code
+      working-directory: ./carewallet-module-patient
+      run: npm install
+
+    - name: npm install - Upload Patient Backend code
+      working-directory: ./carewallet-module-upload-patient
+      run: npm install
+
+    - name: npm install - Upload no state Backend code
+      working-directory: ./carewallet-module-patient-stateless
+      run: npm install
+
+    - name: Zip code - Doctor Backend code
+      working-directory: ./carewallet-module-doctor
+      run: zip -r carewallet-module-doctor.zip ./
+
+    - name: Upload to S3 - Doctor
+      working-directory: ./carewallet-module-doctor
+      run: |
+        aws s3 cp carewallet-module-doctor.zip s3://carewallet-code/carewallet-backend-doctor/ --region us-east-1
+        aws lambda update-function-code --function-name carewallet-backend-doctor \
+          --s3-bucket carewallet-code --s3-key carewallet-backend-doctor/carewallet-module-doctor.zip
+
+    - name: Zip code - Patient
+      working-directory: ./carewallet-module-patient
+      run: zip -r carewallet-module-patient.zip ./
+
+    - name: Upload to S3 - Patient
+      working-directory: ./carewallet-module-patient
+      run: |
+        aws s3 cp carewallet-module-patient.zip s3://carewallet-code/carewallet-backend-patient/ --region us-east-1
+        aws lambda update-function-code --function-name carewallet-backend \
+          --s3-bucket carewallet-code --s3-key carewallet-backend-patient/carewallet-module-patient.zip
+    
+
+    - name: Zip code - carewallet-module-upload-patient
+      working-directory: ./carewallet-module-upload-patient
+      run: zip -r carewallet-module-upload-patient.zip ./
+
+    - name: Upload to S3 - Patient media upload
+      working-directory: ./carewallet-module-upload-patient
+      run: |
+        aws s3 cp carewallet-module-upload-patient.zip s3://carewallet-code/carewallet-backend-patient-image-upload/ --region us-east-1
+        aws lambda update-function-code --function-name carewallet-patient-media-upload \
+          --s3-bucket carewallet-code --s3-key carewallet-backend-patient-image-upload/carewallet-module-upload-patient.zip
+      
+
+    - name: Zip code - No state Backend code
+      working-directory: ./carewallet-module-patient-stateless
+      run: zip -r carewallet-module-patient-stateless.zip ./
+
+    - name: Upload to S3 - No state backend upload
+      working-directory: ./carewallet-module-patient-stateless
+      run: |
+        aws s3 cp carewallet-module-patient-stateless.zip s3://carewallet-code/carewallet-backend-nostate/ --region us-east-1
+        aws lambda update-function-code --function-name carewallet-backend-nostate \
+          --s3-bucket carewallet-code --s3-key carewallet-backend-nostate/carewallet-module-patient-stateless.zip
+
+    - name: Sts GetCallerIdentity
+      run: |
+        aws sts get-caller-identity
+      
+    
