@@ -2,12 +2,10 @@ import boto3
 import json
 import sys
 import io
-
-from insurance_ocr_nlp import insurance_ocr_step
-from update_database import update_dynamodb_item, update_dynamodb_attributes
-
 import numpy as np
 
+from insurance_ocr_nlp import insurance_ocr_step
+from update_database import update_dynamodb_item, update_dynamodb_attributesy
 from PIL import Image
 
 def fraud_step():
