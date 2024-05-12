@@ -27,6 +27,8 @@ def crop_step(s3_client, bucket_name, folder_name, image, image_name, bbox):
     new_fname = rename_file(new_fname, '.JPG', '-cropped.jpg')
     new_fname = rename_file(new_fname, '.png', '-cropped.png')
     new_fname = rename_file(new_fname, '.PNG', '-cropped.png')
+    new_fname = rename_file(new_fname, '.jpeg', '-cropped.jpeg')
+    new_fname = rename_file(new_fname, '.JPEG', '-cropped.jpeg')
     
     s3_client.put_object(Body=buffered.getvalue(), 
                          Bucket=bucket_name, 
